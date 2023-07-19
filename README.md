@@ -362,3 +362,75 @@ return redirect('get_todo_list')
 9. After this we should be able to update the items in the todo item list.
 
 ## Toggling and Deleting Items
+
+### Toggling Items
+
+To finally have 100% CRUD we will be giving the user is the ability to quickly toggle in items done status.
+And then give them the ability to completely delete an item.
+
+1.  We go to **todo_list.html** template and we copy the edit link part and just change the URL and the button text to toggle.
+
+             <td>
+                <a href="/toggle/{{ item.id }}">
+                    <button>Toggle</button>
+                </a>
+            </td>
+
+2.  We then go to **urls.py** and add:
+
+- path('toggle/<item_id>', toggle_item, name='toggle'),
+
+Don't forget to import toggle_item at the top of urls.py
+
+3. Go to **views.py** and add:
+
+- def toggle_item(request, item_id):
+  item = get_object_or_404(Item, id=item_id)
+  item.done = not item.done <-- This takes and flips the done status
+  item.save() <--- before saving it again
+  return redirect('get_todo_list')
+
+4. We should now be able to toggle the done status of an item
+
+### Deleting items
+
+1. Go to **views.py** and copy the toggle_item view and change names to delete
+
+def delete_item(request, item_id):
+item = get_object_or_404(Item, id=item_id)
+item.delete()
+return redirect('get_todo_list')
+
+2.  Then go to **urls.py** and copy the toggle_item url and change to delete_item
+
+    path('delete/<item_id>', delete_item, name='delete')
+
+3.  Finally we need to add one more button in the todo_list.html template
+
+            <td>
+                <a href="/delete/{{ item.id }}">
+                    <button>Delete</button>
+                </a>
+            </td>
+
+## Testing
+
+When we create the todo app, there is automatically a file created called tests.py
+In the file Django imports TestCase. This class is an extension of the Python standard library module called UnitTests.
+Which provides us with a bunch of methods to assert various things about our code. Such as assert equal assert true assert false and so on.
+Testing in most programming languages and frameworks is based on these assertions. And we'll use them to test our code in Django as well.
+
+To get started we create a class called TestDjango which inherits the built in TestCase class.
+Then assertEqual checks if 1 and 0 is the same.
+
+class TestDjango(TestCase):
+
+def test_this_thing_works(self): <--- All test names need to start with "test"
+self.assertEqual(1, 0) 
+
+To run the test we write
+
+- python3 manage.py test
+
+We can also change the name of the test.py file to make it easier to sort the tests out from one another.
+So I will rename this one ****test_views.py** and will also create **test_models.py** and **test_forms.py**
