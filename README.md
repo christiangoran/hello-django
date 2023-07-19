@@ -426,11 +426,285 @@ Then assertEqual checks if 1 and 0 is the same.
 class TestDjango(TestCase):
 
 def test_this_thing_works(self): <--- All test names need to start with "test"
-self.assertEqual(1, 0) 
+self.assertEqual(1, 0)
 
 To run the test we write
 
 - python3 manage.py test
 
 We can also change the name of the test.py file to make it easier to sort the tests out from one another.
-So I will rename this one ****test_views.py** and will also create **test_models.py** and **test_forms.py**
+So I will rename this one \***\*test_views.py** and will also create **test_models.py** and **test_forms.py**
+
+### Testing forms.py
+
+I add this test to test item name is required.
+
+class TestItemForm(TestCase):
+
+    def test_item_name_is_required(self):
+        form = ItemForm({'name': ''})
+        self.assertFalse(form.is_valid())
+        self.assertIn('name', form.errors.keys())
+        self.assertEqual(form.errors['name'][0], 'This field is required.')
+
+I'll begin by instantiating a form and we'll deliberately instantiate it without a name
+to simulate a user who submitted the form without filling it out. This form should not be valid.
+So I'll use \***\*assertFalse** to ensure that that's the case.
+When the form is invalid it should also send back a dictionary of fields on which there were errors and the Associated error messages
+Knowing this we can be even more specific by using \***\*assertIn** to assert
+whether or not there's a name key in the dictionary of form errors. Finally to really drive the point home.
+I'll use **assertEqual** to check whether the error message on the name field is this field is required.
+Remember to include the period at the end here as the string will need to match exactly.
+Also just a note we're using the zero index here because the form will return a list of errors on each field.
+And this verifies that the first item in that list is our string telling us the field is required.
+
+let's write another one to ensure the done field is not required.
+It shouldn't be since it has a default value of false on the item model.
+In this case we'll create the form sending only a name.
+And then just test that the form is valid as it should be even without selecting a done status.
+Finally let's assume that somewhere down the line another developer comes
+along and changes the item model.
+Adding a field to it that contains some sort of information we don't want to display on the form.
+If you remember we actually defined the fields to display explicitly in the inner metaclass on the item form.
+And the reason for that is otherwise the form will display all fields on the model
+including those we might not want the user to see.
+
+    def test_done_field_is_not_required(self):
+        form = ItemForm({'name': 'Test Todo Item'})
+        self.assertTrue(form.is_valid())
+
+That said we should write a test to ensure that the only fields that are displayed in
+the form are the name and done fields.
+I'll call this test. test_fields_are_explicit_in_form_metaclass
+For this test we can simply instantiate an empty form.
+And then use assert equal to check whether the form.meta.fields attribute
+is equal to a list with name and done in it.
+This will ensure that the fields are defined explicitly.
+And if someone changes the item model down the road our form won't
+accidentally display information we don't want it to.
+This will also protect against the fields being reordered. Since the list must match exactly.
+
+def test_fields_are_explicit_in_forms_metaclass(self):
+form = ItemForm()
+self.assertEqual(form.Meta.fields, ['name', 'done'])
+
+To test a specific test form use command:
+
+- python3 manage.py test todo.test_forms
+
+To test a specific class of tests:
+
+- python3 manage.py test todo.test_forms.TestItemForm
+
+Even run a specific individual test:
+
+- python3 manage.py test todo.test_forms.TestItemForm.test_fields_are_explicit_in_form_metaclass
+
+### Testing views.py
+
+class TestViews(TestCase):
+
+    def test_get_todo_list(self):
+
+    def test_get_add_item_page(self):
+
+    def test_get_edit_item_page(self):
+
+    def test_can_add_item(self):
+
+    def test_can_delete_item(self):
+
+    def test_can_toggle_item(self):
+
+The process here is going to be pretty straightforward.
+We want to test not only that our views return a successful HTTP response
+and that they're using the proper templates.
+But also what they can do. Specifically adding toggling and deleting items.
+
+To test the HTTP responses of the views.
+We can use a built-in HTTP client that comes with the Django testing framework.
+I'll start with the get_todo_list view.
+By setting a variable response equal to self.client.get
+And providing the URL slash since we just want to get the home page.
+We can then use assert equal to confirm that the response.status code is equal to 200
+A successful HTTP response.
+To confirm the view uses the correct template.
+I'll use self.assertTemplateUsed and tell it the template we expect it to use in the response.
+
+    def test_get_todo_list(self):
+        response = self.client.get('/')
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'todo/todo_list.html')
+
+The Edit item page is a little different.
+I'll paste in the same code and change the template we're expecting.
+But, in this case, the URL will be edit followed by an item ID like 99 for example.
+If we just pass it a static number though. The test will only pass if that item ID exists in our database.
+And we want to be more generic than that.
+Conveniently in Django tests, we can also do crud operations.
+So let's import the item model at the top. And then create an item to use in this test.
+Now that we've got the item created.
+Testing that we can get the Edit URL.
+Is as simple as adding on its ID. Which I'll do with the Python f string.
+if you're not familiar with f strings.
+They work almost identically to the template literals you learned about in the JavaScript lessons.
+All we've got to do is add an f before the opening quotation mark.
+And then anything we put in curly brackets will be interpreted and turned into part of the string.
+
+Add at the top
+
+- from .models import Item
+
+  def test_get_edit_item_page(self):
+  item = Item.objects.create(name='Test Todo Item')
+  response = self.client.get(f'/edit/{item.id}') <---- Added so we get the specific item we want to test
+  self.assertEqual(response.status_code, 200)
+  self.assertTemplateUsed(response, 'todo/edit_item.html')
+
+To test creating an item we can set the response equal to self.client.post on the add URL
+And give it a name the item as if we've just submitted the item form.
+If the item is added successfully. The view should redirect back to the home page.
+So I'll use assert redirects. To confirm that it redirects back to slash.
+
+    def test_can_add_item(self):
+        response = self.client.post('/add', {'name': 'Test Added Item'})
+        self.assertRedirects(response, '/')
+
+Now let's test whether we can delete an item.
+First I'll create one using item.objects.create.
+And then I'll use the same syntax as we used on the edit_item view.
+To make a get request. To delete slash the items ID
+Again we'll want to assert that the view redirects us as that's what it should do if it's successful.
+And while we should technically already know the test passed at this point.
+Just to prove that the item is in fact deleted.
+I'll try to get it from the database using .filter and passing it the item ID
+Since that item is the only one on the database and we just deleted it.
+We can be certain the view works by asserting whether the length of existing items is zero
+
+def test_can_delete_item(self):
+item = Item.objects.create(name='Test Todo Item')
+response = self.client.get(f'/delete/{item.id}')
+self.assertRedirects(response, '/')
+existing_items = Item.objects.filter(id=item.id)
+self.assertEqual(len(existing_items), 0)
+
+Finally let's test whether toggling items is working.
+The first three lines of this test will be almost the same.
+So I'll copy those from above.
+This time let's create an item with a done status of true. Then call the toggle URL on its ID.
+After asserting that the view redirects us. We can get the item again.
+And I'll call it updated item.
+And then use assert false to check it's done status.
+with that complete I'll run all the tests and verify that they all pass
+
+    def test_can_toggle_item(self):
+        item = Item.objects.create(name='Test Todo Item', done=True)
+        response = self.client.get(f'/toggle/{item.id}')
+        self.assertRedirects(response, '/')
+        updated_item = Item.objects.get(id=item.id)
+        self.assertFalse(updated_item.done)
+
+NOTE: For some reason I failed on all tests that included tests where item was defined. To add "done=False" to the end of the item-variable solved this. This because the Item model in models.py, and specifically the done field does not accept null or blank.
+
+To finally test how much of our code that we have actually tested there is a tool called coverage. We install it with
+
+- pip3 install coverage
+
+Then to run it, type:
+
+- coverage run --source=todo manage.py test
+
+And then to get a report:
+
+- coverage report
+
+or to get a more detailed report that will create a folder named "htmlcov"
+
+- coverage html
+
+and then
+
+- python3 -m http.server
+
+Then click on that htmlcov folder which will open an interactive version of the report.
+
+## Heroku Setup
+
+Since this video was created, the login command for heroku has changed. When the instructor logs in to heroku from the terminal, please use the following command:
+
+- heroku login -i
+
+This will no longer open up the login page in the browser, instead it will prompt you for your username and password in the terminal itself.
+
+NOTE: In case you have Multi-Factor Authentication (MFA/2FA) enabled, you'll need a few extra steps:
+
+    Click on Account Settings (via the avatar menu) on the Heroku Dashboard.
+    Scroll down to the API Key section and click Reveal. Copy the key.
+    Use the login command: heroku login -i
+        Enter your Heroku username.
+        Enter the API key you just copied when prompted for your password.
+
+Before we actually deploy our project to Heroku. Let's set up some things it'll need in order to function out there in the wild.
+First of all, you might remember that the db.sqlite3 file in the file explorer. Has been acting as our database throughout these videos.
+This is fine for local development. But unfortunately, it won't work in production. Because Heroku uses an ephemeral file system.
+Which means it's wiped clean every time Heroku runs updates. Or we redeploy our app. Because sqlite is a file-based database.
+We'll lose our entire database every time this happens because when the file system is wiped the file will be deleted.
+In general, you never want to store anything valuable on an ephemeral file system. Because it isn't guaranteed to stick around.
+Instead, we'll use an add-on for Heroku. Which will allow us to use a server-based database called Postgres.
+And that one will be separated from our application. So it'll survive even if the application server is destroyed.
+To use Postgres in our application. We need to install a package called psycopg2 Which we can do with
+
+- pip3 install psycopg2-binary
+
+Later on, we'll add the Heroku add-on to set it up. But this will take care of the Django side.
+We'll also need a package called gunicorn. Or green unicorn. Which will replace our development server once the app is deployed to Heroku.
+Gunicorn will act as our web server. And we can install it using
+
+- pip3 install gunicorn
+
+With those two packages installed. I'm going to use a new command
+
+- pip 3 freeze - - local > requirements.txt
+
+And will direct it into a file called requirements .txt This requirements file is how Heroku will know what it needs to install for our app to work.
+Specifically, it'll tell Heroku all the packages it needs to install using pip.
+
+
+Now that we've got a requirements file and have installed everything our project will need to run on Heroku.
+We can actually create the Heroku app itself. 
+To create an app. i'll use the command 
+
+- Heroku create cg-django-todo-app
+
+But you can name it whatever you want. You can also specify a region using the --region flag
+By default, the app will be created in the us region. But if you're in the European union you can simply specify --region eu
+With the app created. You should now be able to see it in the list when you run the command Heroku apps.
+
+It should now be created and if you write
+
+- heroku apps
+
+I see a list of all apps I currently have on Heroku
+
+Going forward we're going to use a tool called git. To manage different versions of our app.
+And handle deploying it to Heroku.
+Git is a version control system. That'll allow us to track changes to our code over time
+Similar to being able to save your progress in a video game.
+When we create a Heroku app.
+It automatically sets up a git repository for us that we can push our code changes to.
+And this is how we'll deploy our project.
+If you type git 
+
+- remote -v (for verbose.)
+You'll see that there are two key remote urls here. One for pushing code to Heroku. And one for fetching code from Heroku.
+This tells us that when we use the command 
+
+- git push heroku master
+
+It will be pushed to the master branch at this url.
+If we use the command 
+
+- git push origin master
+
+It would go to the other remote url
+
