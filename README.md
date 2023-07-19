@@ -806,3 +806,14 @@ DATABASES = {
 Note: this does not transfer the data, only the database structure.
 
 6. Run the project to test everything is connected, and add in a few items for your to-do list. 
+
+NOTE: For security reasons, please do not commit your code with the external database URL visible in the settings.py file. You can use an env.py file to hide it now if you want to. In case you need a reminder of how to do this, you can find the steps in the banner above the next video.
+
+If it happens like it just did to me. You need to rotate password in the app settings in elephantSQL, then change to the new database URL in both env.py and Config Vars in Heroku.
+
+Keep in mind that whenever we mention the Heroku Postgres database from this point forward, this is our external database on ElephantSQL.
+
+please create an env.py and add a new environment variable called DATABASE_URL. In case you need a reminder, you can find the steps for this below the video.
+
+Reminder: The env.py file must be added to the .gitignore. If you are using the CI full template, it should already be there.
+
