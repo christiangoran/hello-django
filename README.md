@@ -219,3 +219,146 @@ And finally I'm going to add that context as a third argument to the render func
 
 After this I add a template variable with the items name into the .html-file I want it displayed in {{ items }}
 template variables can show almost anything that you can use in Python Meaning you can return strings, numbers, lists, other dictionaries, or even functions and classes.
+
+## Creating a new item
+
+1. Duplicate todo_list.html and change header text
+2. Add link to the page with href="/name_of_page"
+3. Go to views.py, copy/create a new view variable
+
+def add_item(request):
+return render(request, "todo/add_item.html")
+
+4. Go to urls.py and add a line under urlpatterns variable
+
+path('add', add_item, name='add') <-- the first "add" is the name of the link, whatever_url/add in this case.
+
+5. Also import the add_item from todo.views att the top of the urls.py page
+
+6. Edit your html page
+7. If a POST is required to a form or similar add
+
+ <form method="POST" action="add">
+        {% csrf_token %}
+
+the csrf_token is required for it to work and is a random key that Django generates when creating the post, to verify
+it is actually us that is making the post and not another site.
+
+8. In case this is a POST item Finally we need to add this to the views.py:
+
+def add_item(request):
+if request.method == "POST": #Check that the request coming is from the button being pressed
+name = request.POST.get('item_name')
+done = 'done' in request.POST
+Item.objects.create(name=name, done=done) #creates the new object
+
+        return redirect('get_todo_list')
+
+In this case this if statement recognizes if it is just a GET statement or a POST statement.
+
+9. Import redirect from django.shortcuts at the top of views.py
+
+## Using Django to create forms
+
+1. First create a file called forms.py under the app-folder
+
+2. add:
+   from django import forms
+   from .models import Item (or the name of the model class)
+
+3. Then I add the following class:
+
+class ItemForm(forms.ModelForm):
+class Meta:
+model = Item
+fields = ['name', 'done']
+
+This inner Meta class just gives our form some information about itself. Like which fields it should render how it should display error messages and so on.
+
+4. Then we go to views.py and import the Itemform
+
+- from .forms import ItemForm
+
+5. Now we can create an instance of it in the add_item view
+
+- form = ItemForm()
+  context = {
+  'form' : form
+  }
+
+And then return the context to the return render template
+
+6. Now we can remove all the html code in the add_item.html and just put in a template variable
+
+{{ form }}
+
+7. Finally we need to add this to the views.py with:
+
+def add_item(request):
+if request.method == 'POST':
+form = ItemForm(request.POST)
+if form.is_valid():
+form.save()
+return redirect('get_todo_list')
+
+## Edit existing items
+
+1.  **Add HTML Link on main page** Add html code for edit buttons in the todo_list.html file with items IDs (easy misstake is to write items in plural instead if singular, goto first step in error searching)
+
+            <td>
+                <a href="/edit/{{ item.id }}">
+                    <button>Edit</button>
+                </a>
+            </td>
+
+2.  **Go to VIEW.py** Create a view in the view.py file
+
+def edit_item(request, item_id):
+return render(request, 'todo/edit_item.html')
+
+3. **Create new app** Create a new app by duplicating/creating a new html file. I created edit_item.html
+
+4. **Link it together in URLS.py** Update the urls.py, and do not forget to import the edit_item at the top of urls.py
+
+path('edit/<item_id>', edit_item, name='edit')
+
+5. **Go to VIEWS.py** Now we should be able to click the edit link and end up on the edit_item page. But we still have some things to do to actually retrieve the data to the page to be able to change it. So we need to retrieve the item data from the database.
+
+under the variable edit_item() we add the following line, and id=item_id is what is passed into view from the url.
+
+- item = get_object_or_404(Item, id=item_id)
+
+And we also create an instance of our item form and return it to the template in the context.
+
+form = ItemForm()
+context = {
+'form': form
+}
+return
+
+6. We also want to form to be pre-populated with the current item data we pass an instance argument to the form. So within the brackets of
+   form = ItemForm() we add:
+
+- instance = item
+
+which is telling it to populate it with the item data we just got from the database.
+
+7. We need to import the get_object_or_404 at the top of views.py
+
+8. The form is now on the Edit item page and it's pre-populated with the items data.
+   But when we update it. It still doesn't actually update because we haven't written a post handler in the Edit item view.
+   What we do is go to **views.py** and copy the entire handler from add_item view and only make small changes. We only add
+
+- instance=item
+
+after request.POST
+
+if request.method == 'POST':
+form = ItemForm(request.POST, instance=item)
+if form.is_valid():
+form.save()
+return redirect('get_todo_list')
+
+9. After this we should be able to update the items in the todo item list.
+
+## Toggling and Deleting Items
