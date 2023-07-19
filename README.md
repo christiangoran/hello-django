@@ -708,3 +708,101 @@ If we use the command
 
 It would go to the other remote url
 
+## Create a Database
+
+As your database is currently hosted on Heroku, you will need to move your data out of it. So first, we will create a new database with a free service at ElephantSQL.
+
+1. Log in to ElephantSQL.com to access your dashboard
+
+2. Click “Create New Instance”
+
+3. Set up your plan
+    - Give your plan a Name (this is commonly the name of the project)
+    - Select the Tiny Turtle (Free) plan
+    - You can leave the Tags field blank
+
+4. Select “Select Region”
+
+5. Select a data center near you
+
+6. Then click “Review”
+
+7. Check your details are correct and then click “Create instance”
+
+8. Return to the ElephantSQL dashboard and click on the database instance name for this project
+
+9. Copy the database url for your project, as we’ll need it in the next step
+
+That’s the database created, but how do we connect it to our new deployed app? 
+
+## Connecting the Database to Our App
+
+we set up a new external database for use on our deployed project. Next, we will need to create the Heroku app and add the DATABASE_URL Config Var so our Heroku app can connect to it.
+
+### Creating the Heroku app
+
+First we need to create this new app where our project will be hosted. You’ve done this in previous projects, but as a reminder, here are the steps:
+
+1. Log in to your Heroku account
+
+2. Click the New button in the top right corner
+
+3. Choose a name for your project. This must be unique. Select the region closest to you. Confirm by clicking Create app
+
+### Adding the DATABASE_URL Config Var
+
+1. Go to the Settings tab
+
+2. Click Reveal Config Vars
+
+3. Add a Config Var called DATABASE_URL. Paste your ElephantSQL database URL in as the value
+
+Great, we now have our app set up on Heroku and it is connected to our external database. We need to do one more thing before we can go back to the videos, and that is to connect our IDE workspace to the external database so we can migrate the models.
+
+### Hello Django: Connecting the external database to your IDE
+
+Now we’ll connect our new database to our workspace, so we can migrate our models to the new database and get it working like our local one did.
+
+### Process
+
+1. In your env.py file add a new key, DATABASE_URL, and give it a value of the copied database URL.
+
+-  os.environ.setdefault("DATABASE_URL", "my_copied_database_url")
+
+2. Install the dj-database-url package version 0.5.0 in the terminal with pip3. This will allow us to parse the URL we got above to a format Django can work with:
+
+-  pip3 install dj_database_url==0.5.0
+
+and remember to add it to your requirements.txt with
+
+- pip3 freeze --local > requirements.txt
+
+3. At the top of settings.py, import the package and the env.py file
+
+ from pathlib import Path
+ import os
+ import dj_database_url
+ import env
+
+4. In settings.py, comment out the default database setting and replace it to use the DATABASE_URL environment variable. Your code should now look like this
+
+"""
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
+    }
+}
+"""
+
+DATABASES = {
+    'default' : dj_database_url.parse(os.environ.get('DATABASE_URL'))
+}
+
+5. Run the migrate command in the terminal to build the database according to the model structure we created in earlier videos
+
+-  python3 manage.py migrate
+
+Note: this does not transfer the data, only the database structure.
+
+6. Run the project to test everything is connected, and add in a few items for your to-do list. 
